@@ -154,22 +154,13 @@ def read_adb_output():
     raise FileNotFoundError(f"Could not read {filename}")
 
 def main():
+    import json
+
     try:
         output = read_adb_output()
         parsed = parse_notifications(output)
         cleaned = clean_output(parsed)
-        
-        for idx, notif in enumerate(cleaned, 1):
-            print(f"[Notification {idx}]")
-            print(f"Package: {notif['app']}")
-            print(f"Title: {notif['title']}")
-            print(f"Content: {notif['text']}")
-            print(f"Timestamp: {notif['timestamp']}")
-            print(f"Channel: {notif['channel']}")
-            print(f"Priority: {notif['priority']}")
-            if notif['actions']:
-                print(f"Actions: {', '.join(notif['actions'])}")
-            print("-" * 60)
+        print(json.dumps(cleaned))
             
     except Exception as e:
         print(f"Error: {str(e)}")
