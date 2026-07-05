@@ -141,19 +141,21 @@ def clean_output(notifications):
         'vibration': n.get('vibration', []),
     } for n in notifications]
 
-def read_adb_output(filename):
+def read_adb_output():
+    import subprocess
+    notification_data_bytes=subprocess.check_output(['adb','shell','dumpsys','notification','--noredact'])
+
     encodings = ['utf-8', 'utf-16', 'latin-1']
     for enc in encodings:
         try:
-            with open(filename, 'r', encoding=enc) as f:
-                return f.read()
+            return notification_data_bytes.decode(enc)
         except (UnicodeError, FileNotFoundError):
             continue
     raise FileNotFoundError(f"Could not read {filename}")
 
 def main():
     try:
-        output = read_adb_output('demotext.txt')
+        output = read_adb_output()
         parsed = parse_notifications(output)
         cleaned = clean_output(parsed)
         
