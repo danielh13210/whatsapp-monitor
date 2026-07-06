@@ -34,7 +34,9 @@ def parse_notifications(dumpsys_output):
     current = {}
     notifications = []
     in_extras = False
+    in_text_lines = False
     extras_depth = 0
+    textLines=[]
 
     for line in dumpsys_output.split('\n'):
         line = line.strip()
@@ -46,6 +48,7 @@ def parse_notifications(dumpsys_output):
             current.update({
                 'package': extract_value(r'pkg=(.*?)(\s|$)', line),
                 'id': extract_value(r'id=(0x[0-9a-f]+)', line),
+                'key': extract_value(r'key=(.*?)\s',line),
                 'flags': extract_value(r'flags=(.*?)\s', line),
                 'when': extract_value(r'when=(\d+)', line),
                 'priority': extract_value(r'priority=(\w+)', line),
@@ -68,9 +71,19 @@ def parse_notifications(dumpsys_output):
             if extras_depth <= 0:
                 in_extras = False
             else:
-                update_extras(current, line)
+                if line.startswith('android.textLines='):
+                  in_text_lines=True
+                  textLines=[]
+                elif in_text_lines:
+                  if line.startswith('['): # array content
+                   textLines.append(extract_value(r'\[\d+\] (.*)',line))
+                  else:
+                    in_text_lines=False
+                else:
+                  update_extras(current, line)
             continue
-            
+        if 'extras' in current:
+          current['extras']['android.textLines']=textLines
         for field, (pattern, converter) in NOTIFICATION_STRUCTURE.items():
             if value := extract_value(pattern, line):
                 try:
@@ -127,10 +140,11 @@ def infer_type(value):
     return value
 
 def clean_output(notifications):
-    return [{
+    reparsed=[{
         'app': n.get('package'),
         'title': n.get('android.title') or n.get('extras', {}).get('android.title'),
-        'text': n.get('android.text') or n.get('extras', {}).get('android.text'),
+        'text': n.get('android.textLines') or n.get('extras',{}).get('android.textLines') or n.get('android.text') or n.get('extras', {}).get('android.text'),
+        'key': n.get('key'),
         'timestamp': n.get('when'),
         'channel': n.get('channel'),
         'priority': n.get('priority'),
@@ -140,6 +154,10 @@ def clean_output(notifications):
         'sound': n.get('sound'),
         'vibration': n.get('vibration', []),
     } for n in notifications]
+    notifications_keyed={}
+    for entry in reparsed:
+      notifications_keyed[entry['key']]=entry
+    return list(notifications_keyed.values())
 
 def read_adb_output():
     import subprocess
@@ -159,7 +177,7 @@ def main():
         output = read_adb_output()
         parsed = parse_notifications(output)
         cleaned = clean_output(parsed)
-        json.dump(tuple(filter(lambda entry:entry['app']=="com.whatsapp",cleaned)),sys.stdout)
+        json.dump(tuple(filter(lambda entry:entry['app']=="com.whatsapp" and entry['key']!=None,cleaned)),sys.stdout)
     except Exception as e:
         print(f"Error: {str(e)}")
 
