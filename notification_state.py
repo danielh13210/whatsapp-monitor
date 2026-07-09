@@ -171,13 +171,18 @@ def read_adb_output():
             continue
     raise FileNotFoundError(f"Could not read {filename}")
 
+def get_notification_data():
+    output = read_adb_output()
+    parsed = parse_notifications(output)
+    cleaned = clean_output(parsed)
+    cleaned = tuple(filter(lambda entry:entry['app']=="com.whatsapp" and entry['key']!=None,cleaned))
+    return cleaned
+
 def main():
     import json, sys
     try:
-        output = read_adb_output()
-        parsed = parse_notifications(output)
-        cleaned = clean_output(parsed)
-        json.dump(tuple(filter(lambda entry:entry['app']=="com.whatsapp" and entry['key']!=None,cleaned)),sys.stdout)
+        all_data = get_notification_data()
+        json.dump(all_data,sys.stdout)
     except Exception as e:
         print(f"Error: {str(e)}")
 
