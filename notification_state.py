@@ -1,10 +1,6 @@
 import re
 from collections import defaultdict
-
-def extract_value(pattern, line, default=None):
-    """Helper to safely extract values from lines"""
-    match = re.search(pattern, line)
-    return match.group(1) if match else default
+from utils import extract_value
 
 def parse_core_fields(line, current):
     """Handle fundamental notification fields"""
